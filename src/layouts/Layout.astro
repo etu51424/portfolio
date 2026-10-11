@@ -1,0 +1,31 @@
+---
+import { getCollection } from 'astro:content';
+import { getTags } from '../lib/tags.mjs';
+import '../styles/global.css';
+import '../styles/polish.css';
+import '../styles/tags.css';
+const {title='Notes',active=''}=Astro.props;
+const notes=await getCollection('notes');
+const domains=['Aerospace','Urbanisme & durabilité','Biomédical','Agronomie','Biologie spéculative'];
+const currentDomain=notes.find(n=>n.id===active)?.data.domain;
+const searchIndex=notes.map(n=>({title:n.data.title,domain:n.data.domain,tags:getTags(n.body,n.data.tags),text:n.data.title+' '+n.data.domain+' '+n.body,url:'/notes/'+n.id+'/'}));
+---
+<!doctype html><html lang="fr"><head><meta charset="utf-8"/><meta name="viewport" content="width=device-width"/><title>{title}</title></head><body><aside class="sidebar"><input id="search" type="search" aria-label="Rechercher dans les notes" placeholder="Rechercher…"/><nav aria-label="Fichiers"><a class:list={[{selected:active==='home'}]} href="/">Notes</a>{domains.map(domain=><details open><summary>{domain}</summary><div class="tree">{notes.filter(n=>n.data.domain===domain).map(n=><a class:list={[{selected:active===n.id}]} href={'/notes/'+n.id+'/'}>{n.data.title}</a>)}</div></details>)}<a class:list={[{selected:active==='portfolio-post-ia'}]} href="/notes/portfolio-post-ia/">Construire à l’ère de l’IA</a></nav></aside><div class="shell"><nav class="feed-tabs" aria-label="Fils par domaine"><a href="/" data-domain="" aria-current={!currentDomain?'page':undefined}>Tout</a>{domains.map(domain=><a href={'/?domain='+encodeURIComponent(domain)} data-domain={domain} aria-current={currentDomain===domain?'page':undefined}>{domain==='Urbanisme & durabilité'?'Urbanisme':domain}</a>)}</nav><div id="search-results" hidden aria-live="polite"></div><slot/></div>
+<script id="search-index" type="application/json" set:html={JSON.stringify(searchIndex).replaceAll('<','\\u003c')}/>
+<script>
+import { matchesQuery, tagUrl } from '../lib/tag-search.mjs';
+const index=JSON.parse(document.getElementById('search-index')!.textContent!);
+const input=document.getElementById('search') as HTMLInputElement,results=document.getElementById('search-results')!;
+function search(){
+ const q=input.value.trim();results.replaceChildren();results.hidden=!q;
+ for(const main of document.querySelectorAll<HTMLElement>('main'))main.hidden=!!q;
+ if(!q)return;
+ const matches=index.filter((note:any)=>matchesQuery(note,q));
+ const label=document.createElement('p');label.textContent=matches.length+' résultat(s) pour '+q;results.append(label);
+ for(const note of matches){const row=document.createElement('article');row.className='search-result';const a=document.createElement('a');a.href=note.url;a.textContent=note.title;row.append(a);const tags=document.createElement('div');tags.className='note-tags';for(const tag of note.tags){const link=document.createElement('a');link.href=tagUrl(tag);link.textContent='#'+tag;tags.append(link);}row.append(tags);results.append(row);}
+}
+function fromUrl(){input.value=new URLSearchParams(location.search).get('q')||'';search();}
+input.addEventListener('input',()=>{const url=new URL(location.href);if(input.value.trim())url.searchParams.set('q',input.value.trim());else url.searchParams.delete('q');history.replaceState(null,'',url);search();});
+document.addEventListener('click',event=>{const link=(event.target as Element).closest<HTMLAnchorElement>('.note-tags a,.inline-tag');if(!link||event.defaultPrevented)return;const mouse=event as MouseEvent;if(mouse.button!==0||mouse.metaKey||mouse.ctrlKey||mouse.shiftKey||mouse.altKey)return;event.preventDefault();const url=new URL(location.href);url.searchParams.set('q',new URL(link.href).searchParams.get('q')!);history.pushState(null,'',url);fromUrl();input.focus();window.scrollTo({top:0});});
+window.addEventListener('popstate',fromUrl);fromUrl();
+</script></body></html>

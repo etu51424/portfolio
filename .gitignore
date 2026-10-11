@@ -1,0 +1,10 @@
+node_modules/
+dist/
+.astro/
+.sites-runtime/
+*.tar.gz
+
+.wrangler/
+.dev.vars
+.env
+.env.*
