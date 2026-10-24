@@ -37,8 +37,9 @@
       for (const card of document.querySelectorAll('.media-card')) {
         card.hidden = !!selected && card.dataset.domain !== selected;
       }
-      const intro = document.getElementById('aerospace-intro');
-      if (intro) intro.hidden = selected !== 'Aerospace';
+      for (const intro of document.querySelectorAll('[data-domain-intro]')) {
+        intro.hidden = selected !== intro.dataset.domainIntro;
+      }
     }
 
     if (!searching) return;
